@@ -36,6 +36,15 @@ PCではキーボード用の表示、スマホなどタッチが主入力の端
 2. リポジトリの **Settings → Pages** で **Source** に **GitHub Actions** を選びます。
 3. **Actions → Deploy NEON OVERCLOCK to GitHub Pages → Run workflow** でデフォルトブランチを選びます。配信完了後、デプロイ結果に公開URLが表示されます。次回以降はデフォルトブランチへのpushで自動更新されます。
 
+### GA4で閲覧数とプレイ開始数を測る
+
+1. [Google アナリティクス](https://analytics.google.com/)でプロパティを作成し、**データ ストリーム → ウェブ** から `https://zenpou.github.io/neon-overclock/` のストリームを追加します。
+2. 表示された測定ID（`G-` で始まる文字列）をコピーします。
+3. GitHubリポジトリの **Settings → Secrets and variables → Actions → Variables** で、名前 `GA4_MEASUREMENT_ID` の **Repository variable** を作り、測定IDを保存します。
+4. Pagesワークフローを再実行します。`index.html` と `help.html` の閲覧はGA4標準の `page_view`、タイトル画面から実際に侵入を始めたときは `game_start` イベントとして記録されます。
+
+GA4の **レポート → リアルタイム** で受信を確認できます。プレイ開始人数は、**レポート → エンゲージメント → イベント** で `game_start` を選び、ユーザー数を確認します。測定IDが未設定のローカル実行では計測リクエストは送信されません。
+
 ワークフローは構文チェックとテストを実行し、ゲーム本体と画像を配信します。公開URLは通常 `https://<ユーザー名>.github.io/<リポジトリ名>/` です。[GitHub Pagesの公開ソースを設定する](https://docs.github.com/ja/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
 ## ビルド

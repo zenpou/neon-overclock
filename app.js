@@ -221,6 +221,7 @@
     $('hud').classList.remove('hidden');
     audio.unlock();
     engine.start(body,contract);
+    globalThis.gtag?.('event', 'game_start');
     updateControls();
     if(typeof renderer.setAppearance==='function')renderer.setAppearance(body,[]);
     lastState='playing';
