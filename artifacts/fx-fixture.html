@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><base href="../">
+<title>FX fixture — NEON OVERCLOCK</title>
+<style>html,body{margin:0;background:#080b10;overflow:hidden}#game{display:block;width:1280px;height:720px}</style>
+</head>
+<body>
+<!-- 表示検証専用。レンダラーへ任意のイベントを流し、フレームを同期的に進める。
+     非表示タブでは requestAnimationFrame が止まるため、fx.step() で手動送りする。 -->
+<canvas id="game"></canvas>
+<script src="engine.js"></script><script src="appearance.js"></script><script src="renderer.js"></script>
+<script>
+(() => {
+  const r = new NeonRenderer(document.getElementById('game'));
+  let seed = 12345;
+  const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const eng = new NeonEngine({ onEvent: e => { if (fx.live) r.event(e); }, random });
+  const fx = {
+    r, eng, live: true,
+    // 実エンジンを進めて敵を湧かせる。プレイヤーは無敵にして盤面だけ作る。
+    populate(seconds = 6, floor = 1) {
+      eng.start('runner');
+      for (let i = 0; i < seconds * 60; i++) { eng.player.invuln = 1; eng.update(1 / 60, { x: Math.cos(i / 40), y: Math.sin(i / 40) }); }
+      return eng.enemies.length;
+    },
+    step(n = 1, dt = 1 / 60, sim = false) {
+      for (let i = 0; i < n; i++) { if (sim) { eng.player.invuln = 1; eng.update(dt, { x: 0, y: 0 }); } r.update(dt, eng, false); r.render(eng, false); }
+      return { particles: r.particles.length };
+    },
+    fire(e) { r.event(e); return fx.step(1); },
+    // 合成負荷：毎フレームの撃破・被弾・雷撃と、定期的なBLACKOUT。getImageDataでラスタライズを同期させて計測する。
+    bench(frames = 600, every = 1) {
+      const ctx = r.ctx, times = []; let peak = 0;
+      for (let i = 0; i < frames; i++) {
+        const t0 = performance.now();
+        if (i % every === 0) for (let k = 0; k < 3; k++) { const x = 300 + Math.random() * 1000, y = 200 + Math.random() * 600; r.event({ type: 'kill', x, y, color: '#ff4d8e', amount: 34, r: 17, enemyType: 'rush', combo: i }); r.event({ type: 'explosion', x, y, color: '#ff4d8e', amount: 17, r: 17, enemyType: 'rush' }); }
+        if (i % every === 0) for (let k = 0; k < 6; k++) r.event({ type: 'hit', x: 300 + Math.random() * 1000, y: 200 + Math.random() * 600, color: '#46e9ff', amount: 12 });
+        if (i % every === 0) for (let k = 0; k < 2; k++) r.event({ type: 'lightning', x: 800, y: 500, tx: 300 + Math.random() * 1000, ty: 200 + Math.random() * 600 });
+        if (i % 120 === 60) r.event({ type: 'ultimate', x: 800, y: 500 });
+        if (i % 90 === 45) r.event({ type: 'dash', x: 800, y: 500, tx: 600, ty: 500 });
+        r.update(1 / 60, eng, false); r.render(eng, false); ctx.getImageData(0, 0, 1, 1);
+        times.push(performance.now() - t0); peak = Math.max(peak, r.particles.length);
+      }
+      times.sort((a, b) => a - b);
+      const avg = times.reduce((a, b) => a + b, 0) / times.length;
+      return { frames, avgMs: +avg.toFixed(2), p95Ms: +times[Math.floor(times.length * .95)].toFixed(2), maxMs: +times.at(-1).toFixed(2), peakParticles: peak, ultra: r.ultra, canvas: r.canvas.width + 'x' + r.canvas.height };
+    }
+  };
+  window.fx = fx;
+})();
+</script>
+</body>
+</html>

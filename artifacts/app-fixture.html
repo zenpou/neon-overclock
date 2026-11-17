@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>APP fixture — NEON OVERCLOCK</title></head>
+<body>
+<!-- 動作検証専用。本体の index.html をそのまま読み込み、requestAnimationFrame だけを手動送りに差し替える。
+     非表示・背面のタブでもゲームループを決定的に進められる：
+       stepFrames(600)          60fps相当で10秒ぶん進める
+       window.__skipRender=true 描画を省いてロジックだけ高速に進める
+     状態は neonGame.getSnapshot() で読む。イベント処理中に握りつぶされた例外は window.__swallowed に残る。
+     localStorage への書き込みは無効化している（本物のセーブを汚さないため）。 -->
+<script>
+fetch('../index.html').then(r => r.text()).then(html => {
+  const stub = '<base href="../"><script>' +
+    'window.__clock=0;window.__raf=null;window.__skipRender=false;window.__swallowed=[];' +
+    // 検証で本物のセーブ（ベストスコア・クリア回数・設定）を書き換えない。
+    'Storage.prototype.setItem=function(){};' +
+    // エンジンは onEvent 内の例外を握りつぶすので、ここで記録してから再送出する。
+    'let E;Object.defineProperty(window,"NeonEngine",{configurable:true,get:()=>E,set:C=>{E=class extends C{constructor(o={}){const f=o.onEvent;super({...o,onEvent:f&&(e=>{try{f(e);}catch(err){window.__swallowed.push(e.type+": "+err.message);throw err;}})});}};}});' +
+    'window.requestAnimationFrame=cb=>{window.__raf=cb;return 0;};' +
+    'window.stepFrames=(n,ms=1000/60)=>{for(let i=0;i<n;i++){window.__clock+=ms;const cb=window.__raf;window.__raf=null;if(cb)cb(window.__clock);}return window.neonGame&&window.neonGame.getSnapshot();};' +
+    'window.addEventListener("DOMContentLoaded",()=>{const render=NeonRenderer.prototype.render;NeonRenderer.prototype.render=function(...a){if(!window.__skipRender)return render.apply(this,a);};});' +
+    '<\/script>';
+  document.open(); document.write(html.replace('<head>', '<head>' + stub)); document.close();
+});
+</script>
+</body>
+</html>
