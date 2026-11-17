@@ -522,6 +522,10 @@
     const field=$('shareContent');
     field.rows=resultText?5:1;
     field.value=resultText?`${resultText}\n${publicUrl}`:publicUrl;
+    const xUrl=new URL('https://x.com/intent/tweet');
+    xUrl.searchParams.set('text',resultText||'NEON OVERCLOCK — ブラウザで遊べるサイバーパンク・アクションローグライク');
+    xUrl.searchParams.set('url',publicUrl);
+    $('shareX').href=xUrl.href;
     $('shareTextCopy').hidden=!resultText;
     $('shareNative').hidden=typeof navigator.share!=='function'||(typeof navigator.canShare==='function'&&!navigator.canShare(shareData));
     $('shareStatus').textContent='';

@@ -404,6 +404,7 @@ body {
 .campaign-launch { width: 100%; margin-top: 9px; background: #a4fff0; color: #07171a; }
 .share-link { min-height: 40px; padding: 6px 12px; border: 1px solid #5af6f35c; background: #0b1821; color: var(--cyan); font-size: 12px; }
 .share-link:hover, .share-link:focus-visible { border-color: var(--cyan); }
+a.share-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .launch-caption .share-link { min-height: 36px; font-size: 11px; letter-spacing: .04em; }
 .result-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .share-dialog { width: min(540px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: clamp(18px, 5vw, 30px); color: #eff7f8; background: #0b1521; border: 1px solid #5af6f37a; box-shadow: 0 10px 60px #000a; }
