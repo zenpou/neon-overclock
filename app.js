@@ -1,6 +1,9 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
+  const shareDialog=$('shareDialog');
+  const publicUrl=document.querySelector('link[rel="canonical"]')?.href;
+  let shareData=null;
   const names=['侵入口 / THE BREACH','貨物区画 / CARGO ZERO','神経回廊 / NEURAL LINK','製造区画 / BLACK FORGE','記憶保管庫 / LOST MEMORY','違法研究棟 / GOD COMPLEX','防衛中枢 / POINT OF NO RETURN','管理AI / CERBERUS'];
   const bodies={runner:'ARC RUNNER',samurai:'HEAT SAMURAI',summoner:'GHOST ENGINEER',lineman:'LIVEWIRE TECH'};
   const symbols={LIGHTNING:'ϟ',VIRUS:'⌬',HEAT:'♨',MOBILITY:'↗',SURVIVE:'✚',DRONE:'⌘',BLADE:'╱',GENERAL:'◇',ULTIMATE:'✳'};
@@ -511,6 +514,47 @@
     $('resultScreen').classList.remove('hidden');
     $('resultScreen').scrollTop=0;
   }
+  function openShare(resultText=''){
+    if(!shareDialog||!publicUrl||shareDialog.open)return;
+    shareData={title:'NEON OVERCLOCK',url:publicUrl};
+    if(resultText)shareData.text=resultText;
+    $('shareHeading').textContent=resultText?'戦績を共有':'ゲームを共有';
+    const field=$('shareContent');
+    field.rows=resultText?5:1;
+    field.value=resultText?`${resultText}\n${publicUrl}`:publicUrl;
+    $('shareTextCopy').hidden=!resultText;
+    $('shareNative').hidden=typeof navigator.share!=='function'||(typeof navigator.canShare==='function'&&!navigator.canShare(shareData));
+    $('shareStatus').textContent='';
+    shareDialog.showModal();
+  }
+  function shareResultText(){
+    const won=engine.state==='won',offer=assignment?.offer;
+    const mission=offer?`${offer.companyName} · ${offer.facilityName} · 危険ランク ${NeonCampaignUI.format(offer.rank)}`:'CERBERUS序章';
+    const outcome=won?(offer?'依頼達成':'クリア'):(offer?'回収失敗':'未クリア');
+    const stats=[bodies[engine.loadout],formatTime(engine.elapsed),`撃破 ${engine.kills}体`];
+    if(!offer)stats.push(`スコア ${Math.floor(engine.score).toLocaleString('ja-JP')}`);
+    return ['NEON OVERCLOCK',`${mission} · ${outcome}`,stats.join(' · ')].join('\n');
+  }
+  async function copyShare(includeResult){
+    const data=shareData,field=$('shareContent');
+    const value=includeResult?field.value:publicUrl;
+    try{
+      await navigator.clipboard.writeText(value);
+      if(shareDialog.open&&shareData===data)$('shareStatus').textContent=includeResult?'戦績とリンクをコピーしました。':'公開リンクをコピーしました。';
+    }catch{
+      if(!shareDialog.open||shareData!==data)return;
+      field.focus();
+      field.setSelectionRange(field.value.length-value.length,field.value.length);
+      $('shareStatus').textContent='選択した内容を端末のコピー操作でコピーできます。';
+    }
+  }
+  async function openNativeShare(){
+    const data=shareData;
+    try{await navigator.share(data);}
+    catch(error){
+      if(shareDialog.open&&shareData===data&&error?.name!=='AbortError')$('shareStatus').textContent='共有メニューが開けませんでした。内容をコピーして共有できます。';
+    }
+  }
   function showState(){if(engine.state==='chest'){$('choiceScreen').classList.add('hidden');renderChest();return;}if(engine.state==='upgrade'||engine.state==='route')renderChoices();else{$('choiceScreen').classList.add('hidden');if(engine.state==='won'||engine.state==='dead')result();else if(engine.state==='playing')$('bodyLabScreen').classList.add('hidden');}}
   // Seconds the arena stays visible after leaving combat, so the explosion, vault burst or
   // boss collapse is seen before a modal covers it. Input for the next screen is held as well.
@@ -522,6 +566,13 @@
     if(inRun&&!paused&&timeScale>0){engine.update(dt*timeScale,{x:(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+touch.x,y:(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+touch.y,dash:!!keys.Space||queued.dash,hack:!!keys.KeyE||queued.hack,ultimate:!!keys.KeyQ||queued.ultimate});syncState();}if(timeScale>0||!inRun)queued={};renderer.update(paused?0:dt*(timeScale||.1),engine,!inRun);renderer.render(engine,!inRun);audio.update(inRun&&!paused&&engine.state==='playing',engine.player.heat/(engine.build.stats.heat||100));if(lab.open&&time-previewLast>100){previewLast=time;refreshLabPreview();}hudTimer+=dt;if(hudTimer>.12){if(inRun)updateHud();$('game').dataset.fps=String(Math.round(fps));$('game').dataset.particles=String(renderer.particles.length);$('game').dataset.playerX=String(Math.round(engine.player.x));$('game').dataset.playerY=String(Math.round(engine.player.y));hudTimer=0;}requestAnimationFrame(loop);}
   document.querySelectorAll('.loadout').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.loadout;updateTitleBodyVisual();}));
   $('startButton').onclick=()=>start();
+  if(shareDialog){
+    $('shareGameButton').onclick=()=>openShare();
+    $('shareResultButton').onclick=()=>openShare(shareResultText());
+    $('shareLinkCopy').onclick=()=>copyShare(false);
+    $('shareTextCopy').onclick=()=>copyShare(true);
+    $('shareNative').onclick=openNativeShare;
+  }
   if($('campaignButton'))$('campaignButton').onclick=openCampaign;
   $('retryButton').onclick=()=>{if(assignment||engine.state==='won'&&canOpenCampaign())openCampaign();else start();};
   $('quitButton').onclick=()=>{if(assignment)openCampaign();else title();};
@@ -534,7 +585,7 @@
     if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
     else document.documentElement.requestFullscreen().catch(()=>toast('このブラウザでは全画面にできません'));
   };
-  window.addEventListener('keydown',e=>{if(campaignUI&&!$('campaignScreen').classList.contains('hidden')){if(e.code==='Escape'&&!e.repeat){e.preventDefault();title();}return;}if(e.code==='F2'&&!e.repeat){e.preventDefault();togglePerf();return;}if(inRun&&hold>0){if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();return;}if(inRun&&engine.state==='chest'&&!lab.open){if(e.repeat){e.preventDefault();return;}if(/^Digit[123]$/.test(e.code)){e.preventDefault();chooseChest(Number(e.code.slice(-1))-1);}else if(['Enter','Space'].includes(e.code)&&engine.chestReward?.remaining===0){e.preventDefault();continueChest();}return;}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='Escape'&&!e.repeat){if(lab.open){closeBodyLab();return;}setPause(!paused);return;}if(!e.repeat&&e.code==='KeyI'){if(lab.open){closeBodyLab();return;}if(inRun&&engine.state==='playing')openBodyLab(true);else if(!inRun)openBodyLab(false);return;}if(inRun&&!paused&&(engine.state==='upgrade'||engine.state==='route')&&/^Digit[1-5]$/.test(e.code)&&!e.repeat){choose(Number(e.code.slice(-1))-1);return;}const action={Space:'dash',KeyE:'hack',KeyQ:'ultimate'}[e.code];if(action&&e.repeat)return;if(action)queueAction(action);keys[e.code]=true;});window.addEventListener('keyup',e=>{keys[e.code]=false;});window.addEventListener('blur',()=>{keys={};if(inRun&&!lab.open)setPause(true);});document.addEventListener('visibilitychange',()=>{if(document.hidden&&inRun&&!lab.open)setPause(true);});
+  window.addEventListener('keydown',e=>{if(shareDialog?.open)return;if(campaignUI&&!$('campaignScreen').classList.contains('hidden')){if(e.code==='Escape'&&!e.repeat){e.preventDefault();title();}return;}if(e.code==='F2'&&!e.repeat){e.preventDefault();togglePerf();return;}if(inRun&&hold>0){if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();return;}if(inRun&&engine.state==='chest'&&!lab.open){if(e.repeat){e.preventDefault();return;}if(/^Digit[123]$/.test(e.code)){e.preventDefault();chooseChest(Number(e.code.slice(-1))-1);}else if(['Enter','Space'].includes(e.code)&&engine.chestReward?.remaining===0){e.preventDefault();continueChest();}return;}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='Escape'&&!e.repeat){if(lab.open){closeBodyLab();return;}setPause(!paused);return;}if(!e.repeat&&e.code==='KeyI'){if(lab.open){closeBodyLab();return;}if(inRun&&engine.state==='playing')openBodyLab(true);else if(!inRun)openBodyLab(false);return;}if(inRun&&!paused&&(engine.state==='upgrade'||engine.state==='route')&&/^Digit[1-5]$/.test(e.code)&&!e.repeat){choose(Number(e.code.slice(-1))-1);return;}const action={Space:'dash',KeyE:'hack',KeyQ:'ultimate'}[e.code];if(action&&e.repeat)return;if(action)queueAction(action);keys[e.code]=true;});window.addEventListener('keyup',e=>{keys[e.code]=false;});window.addEventListener('blur',()=>{keys={};if(inRun&&!lab.open)setPause(true);});document.addEventListener('visibilitychange',()=>{if(document.hidden&&inRun&&!lab.open)setPause(true);});
   function moveJoystick(event){
     if(event.pointerId!==joystickPointer)return;
     const bounds=joy.getBoundingClientRect();

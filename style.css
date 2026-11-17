@@ -402,6 +402,22 @@ body {
 .route-effects{font-size:11px}
 .route-threat{color:#ff7b9d;padding-left:9px;border-left:2px solid #ff375f}
 .campaign-launch { width: 100%; margin-top: 9px; background: #a4fff0; color: #07171a; }
+.share-link { min-height: 40px; padding: 6px 12px; border: 1px solid #5af6f35c; background: #0b1821; color: var(--cyan); font-size: 12px; }
+.share-link:hover, .share-link:focus-visible { border-color: var(--cyan); }
+.launch-caption .share-link { min-height: 36px; font-size: 11px; letter-spacing: .04em; }
+.result-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.share-dialog { width: min(540px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: clamp(18px, 5vw, 30px); color: #eff7f8; background: #0b1521; border: 1px solid #5af6f37a; box-shadow: 0 10px 60px #000a; }
+.share-dialog::backdrop { background: #050a12d6; }
+.share-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.share-header h2 { margin: 0; font-size: clamp(18px, 4.5vw, 26px); }
+.share-header .icon-button { min-height: 36px; padding-inline: 12px; white-space: nowrap; }
+#shareContent { display: block; width: 100%; resize: vertical; padding: 10px; border: 1px solid #9ec5d347; background: #060e16; color: #e4f3f6; font: 13px/1.65 monospace; }
+.share-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.share-actions #shareNative { border-color: #eaff6399; color: var(--yellow); }
+.share-status { min-height: 1.4em; margin: 10px 0 0; color: #bcd0dd; font-size: 12px; }
+@media (pointer: coarse) {
+  .share-link, .launch-caption .share-link, .share-header .icon-button { min-height: 44px; }
+}
 .enemy-intel { color: var(--weak-color, var(--cyan)); font-size: 11px; line-height: 1.4; margin-top: 4px; text-wrap: balance; text-shadow: 0 2px 5px #06101a; }
 .boss-bar.raid-guard > span { color: #f7d9eb; letter-spacing: .8px; }
 .loot-tracker.under-raid-guard { top: 191px; }
