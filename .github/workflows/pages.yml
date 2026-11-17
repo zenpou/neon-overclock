@@ -39,9 +39,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site/assets
-          cp index.html app.js engine.js appearance.js renderer.js campaign.js campaign-ui.js style.css _site/
+          cp index.html help.html help.css help.js app.js engine.js appearance.js renderer.js campaign.js campaign-ui.js style.css _site/
           cp -R assets/characters assets/sprites _site/assets/
-          cp assets/share-preview.png _site/assets/
+          cp assets/share-preview.png assets/item-catalog.png _site/assets/
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4

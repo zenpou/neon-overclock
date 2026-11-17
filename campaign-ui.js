@@ -9,6 +9,15 @@
     lineman: '加速処置 · 初回でダッシュ再使用を短縮'
   };
   const slots = { weapon: '攻撃装備', armor: '防御装備' };
+  function gearIcon(id) {
+    const image = node('img', 'campaign-item-icon');
+    image.src = `assets/sprites/items/${id}.png`;
+    image.alt = '';
+    image.setAttribute('aria-hidden', 'true');
+    image.decoding = 'async';
+    image.loading = 'lazy';
+    return image;
+  }
 
   function node(tag, className, value) {
     const el = document.createElement(tag);
@@ -206,6 +215,7 @@
     purchaseCard(type, id, name, description, stateLabel, actionLabel) {
       const card = node('article', 'campaign-store-card');
       const cost = campaign.quote(this.profile, type, id);
+      if (type === 'gear') card.append(gearIcon(id));
       card.append(node('b', '', name), node('small', '', stateLabel), node('p', '', description));
       if (cost !== null) {
         const buy = button(`${actionLabel} · ${NeonCampaignUI.format(cost)}`, `buy-${type}-${id}`, () => {

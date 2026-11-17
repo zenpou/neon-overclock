@@ -1,6 +1,6 @@
 # NEON OVERCLOCK — キャラクターアート仕様
 
-制作：OpenAI内蔵画像生成ツール（built-in image_gen）。CLI/API経由の生成は使用していない。全画像はRGBA透過PNGをそのまま保存し、ゲームではスプライトアトラスのセルを切り出して描画する。
+制作にはOpenAI内蔵の画像生成ツールを使用。キャラクターと装着パーツはRGBA透過PNGに保存し、戦闘ではアトラスから各セルを描画する。取得アイコンは品目ごとの透過PNGに切り出す。
 
 ## 共通テイスト
 
@@ -20,11 +20,21 @@
 | `characters/summoner.png` | フード・薄紫のボブ・ドローン制御装置のGHOST ENGINEER | タイトル、HUD、BODY LAB |
 | `sprites/actors.png` | 3×3の戦闘ユニット9種 | 主人公、敵、ボス、ドローン |
 | `sprites/players.png` | 4×3の主人公方向別12フレーム | 3人それぞれ右・下・左・上向き |
-| `sprites/augments.png` | 3×2の追加装備6系統 | 改造後の主人公、改造カード、試着プレビュー |
+| `sprites/augments.png` | 3×2の追加装備6系統 | 改造後の主人公、試着プレビュー |
+| `sprites/items/<id>.png` | 改造19種と共用装備4種。それぞれ192×192 | 宝箱・制圧報酬の選択カード、所持HUD、共用装備ショップ |
 
 アクターアトラスは左上から行優先で runner / samurai / summoner / rush / shooter / tank / elite / boss / drone。パーツアトラスは lightning / heat / drone / virus / armor / mobility。
 
 ## 生成プロンプトセット（共通仕様と各画像への指示）
+
+### 取得アイコン
+
+Generate a 6-column by 4-row transparent inventory atlas. Center one isolated object per cell. Use hand-inked Japanese sci-fi game art, dark navy metal, ivory highlights, broad areas of bright enamel, and distinct silhouettes readable at HUD scale. Omit labels, frames and grid lines. In row order:
+
+1. Cyan interlocked chain links, forked blue lightning bolt, spiked violet germ, branching magenta circuit, orange tachometer, red finned heat amplifier.
+2. Blue U-shaped coolant hose, molten crystal in metal claws, teal thruster, blue heraldic shield, green medical repair crab, lilac robotic assembly arm.
+3. Magenta beam emitter, violet satellite dish, crossed pink blades, lavender optical lens, yellow horseshoe magnet, upright yellow battery.
+4. Crimson mechanical heart, copper Tesla coil, single orange thermal knife, ivory layered pauldron, blue radiator fan, empty cell.
 
 ### 共通仕様
 

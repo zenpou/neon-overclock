@@ -73,7 +73,9 @@
 }
 .loot-choice:hover,.loot-choice:focus-visible{border-color:var(--loot-color);outline:2px solid var(--loot-color);outline-offset:3px}
 .loot-card>small{font:10px monospace;letter-spacing:1px;color:var(--item-color)}
-.loot-card canvas{display:block;width:100%;height:78px;object-fit:contain}
+.item-icon{display:block;object-fit:contain}
+.item-icon-loot{width:100%;height:78px;margin:0 0 2px}
+.item-icon-choice{width:42%;height:84px}
 .loot-card h3{font-size:15px;margin:6px 0;color:#fff}
 .chest-screen .loot-card p{font-size:12px;line-height:1.55;text-align:left;margin:0 0 8px}
 .loot-card>b{font-size:10px;color:var(--loot-color);border-top:1px solid #ffffff22;margin-top:auto;padding-top:8px}
@@ -84,7 +86,8 @@
 #chestPowerStats{font:11px monospace;color:#edf9ff;letter-spacing:.5px}
 #buildIcons{max-width:340px;max-height:62px;overflow:auto}
 .build-icon{position:relative}
-.build-icon sup{font:8px monospace;margin-left:3px;color:#eaff63}
+.item-icon-build{width:100%;height:100%}
+.build-icon sup{position:absolute;right:0;bottom:0;padding:0 2px;background:#080b10ed;color:#eaff63;font:bold 9px/1.2 monospace}
 
 .upgrade-screen{justify-content:safe center;padding:20px}
 .upgrade-screen>*{flex-shrink:0}
@@ -93,6 +96,7 @@
 .upgrade-screen .choice-card p{margin-bottom:8px}
 .upgrade-screen .choice-card .card-visuals{height:82px}
 .upgrade-screen .card-visuals canvas{max-height:82px}
+.upgrade-screen .item-icon-choice{max-height:82px}
 .upgrade-screen .choice-card:hover .choice-body-preview,
 .upgrade-screen .choice-card:focus-visible .choice-body-preview{opacity:1;transform:scale(1.06)}
 .upgrade-comparison{display:grid;gap:4px;margin:0 0 8px;padding:8px;background:#060b1399;font-size:12px;line-height:1.4}
@@ -128,7 +132,7 @@
   .chest-items{display:grid;gap:8px;margin:12px 0}
   .loot-choice{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 10px;max-width:none;padding:10px}
   .loot-choice>small,.loot-choice>b,.loot-choice .upgrade-comparison{grid-column:1/-1}
-  .loot-choice canvas{grid-column:1;grid-row:2/4;height:58px}
+  .loot-choice .item-icon-loot{grid-column:1;grid-row:2/4;height:58px}
   .loot-choice h3,.chest-screen .loot-choice p{grid-column:2;margin:0}
   .loot-choice .upgrade-comparison{margin-bottom:0}
 }
@@ -475,6 +479,7 @@ a.share-link { display: inline-flex; align-items: center; justify-content: cente
 .campaign-shop { grid-column: 1 / -1; }
 .campaign-store-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .campaign-store-card { display: flex; flex-direction: column; gap: 5px; padding: 12px; background: #101e2c; border: 1px solid var(--campaign-border); }
+.campaign-item-icon { display: block; width: 58px; height: 58px; object-fit: contain; margin-bottom: 3px; filter: drop-shadow(0 0 8px #5af6f355); }
 .campaign-operatives + .campaign-store-card { margin-top: 12px; }
 .campaign-store-card p:not(.eyebrow) { margin: 0 0 5px; text-align: left; line-height: 1.5; }
 .campaign-store-card .campaign-button { color: var(--yellow); margin-top: auto; }
@@ -492,6 +497,7 @@ a.share-link { display: inline-flex; align-items: center; justify-content: cente
   .campaign-columns .campaign-operatives b { font-size: 11px; }
 }
 @media(max-width: 700px) {
+  .item-icon-choice { height: 58px; }
   .campaign-header { gap: 9px; padding-bottom: 11px; }
   .campaign-nav { margin: 9px 0 13px; }
   .campaign-companies .campaign-button { padding: 6px; }

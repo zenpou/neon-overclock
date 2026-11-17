@@ -6,10 +6,17 @@
   let shareData=null;
   const names=['侵入口 / THE BREACH','貨物区画 / CARGO ZERO','神経回廊 / NEURAL LINK','製造区画 / BLACK FORGE','記憶保管庫 / LOST MEMORY','違法研究棟 / GOD COMPLEX','防衛中枢 / POINT OF NO RETURN','管理AI / CERBERUS'];
   const bodies={runner:'ARC RUNNER',samurai:'HEAT SAMURAI',summoner:'GHOST ENGINEER',lineman:'LIVEWIRE TECH'};
-  const symbols={LIGHTNING:'ϟ',VIRUS:'⌬',HEAT:'♨',MOBILITY:'↗',SURVIVE:'✚',DRONE:'⌘',BLADE:'╱',GENERAL:'◇',ULTIMATE:'✳'};
   const appearance=globalThis.NeonAppearance;
   const familyPreviewIds={lightning:'chain_core',heat:'overclock',drone:'drone_fabricator',virus:'virus_seed',armor:'phase_shield',mobility:'dash_reactor'};
   const familySymbols={lightning:'ϟ',heat:'♨',drone:'⌘',virus:'⌬',armor:'✚',mobility:'╱'};
+  function createItemIcon(id,className){
+    const image=document.createElement('img');
+    image.className=`item-icon ${className}`;
+    image.src=`assets/sprites/items/${id}.png`;
+    image.alt='';
+    image.decoding='async';
+    return image;
+  }
   const storage={get(k,fallback){try{return JSON.parse(localStorage.getItem('neon.'+k))??fallback;}catch{return fallback;}},set(k,v){try{localStorage.setItem('neon.'+k,JSON.stringify(v));}catch{}}};
   const campaign=globalThis.NeonCampaign;
   let savedProfile=storage.get('campaign',null);
@@ -127,7 +134,6 @@
   function togglePerf(){perf.on=!perf.on;if(perf.el)perf.el.style.display=perf.on?'':'none';perf.samples=[];perf.worst=0;perf.peak=0;toast(perf.on?'PERF // 戦闘中のフレーム時間を表示':'PERF // 非表示');}
   function resolveAppearance(loadout,upgrades){return appearance?.resolve?appearance.resolve(loadout,upgrades):{loadout,body:null,total:0,stage:0,stageLabel:'BASE BODY',stageLabelEn:'BASE BODY',dominant:null,families:[],signature:`${loadout}|s0|none`};}
   function drawBodyPreview(canvas,visual){if(canvas&&typeof renderer.drawBodyPreview==='function')renderer.drawBodyPreview(canvas,visual);}
-  function drawPartIcon(canvas,familyId,tier){if(canvas&&typeof renderer.drawPartIcon==='function')renderer.drawPartIcon(canvas,familyId,tier);}
   function syncRendererAppearance(){const visual=resolveAppearance(engine.loadout,engine.upgrades);if(typeof renderer.setAppearance==='function')renderer.setAppearance(engine.loadout,engine.upgrades.slice());drawBodyPreview($('hudBodyPreview'),visual);updateAppearanceHud(visual);return visual;}
   function updateTitleBodyVisual(){const visual=resolveAppearance(selected,[]),body=appearance?.BODIES?.[selected];if(typeof renderer.setPreviewLoadout==='function')renderer.setPreviewLoadout(selected);drawBodyPreview($('titleBodyPreview'),visual);const portrait=$('titlePortrait');if(portrait){portrait.src=body?.portrait||`assets/characters/${selected}.png`;portrait.alt=`${body?.label||bodies[selected]} の全身ポートレート`;}$('titleBodyName').textContent=body?.label||bodies[selected];$('titleBodyRole').textContent=body?.role||'';$('titleBodyStage').textContent=visual.stageLabelEn||'BASE BODY';document.querySelectorAll('.loadout').forEach(button=>button.classList.toggle('selected',button.dataset.loadout===selected));}
   function updateAppearanceHud(visual=resolveAppearance(engine.loadout,engine.upgrades)){const stage=$('appearanceStageLabel');if(stage)stage.textContent=visual.stageLabelEn||visual.stageLabel||'BASE BODY';const meter=$('appearanceStageMeter');if(meter){meter.replaceChildren();for(let i=1;i<=3;i++){const pip=document.createElement('i');pip.className=i<=visual.stage?'active':'';meter.append(pip);}}drawBodyPreview($('hudBodyPreview'),visual);}
@@ -371,10 +377,15 @@
         const proposed=resolveAppearance(engine.loadout,[...engine.upgrades,option.id]);
         const visuals=document.createElement('span');
         visuals.className='card-visuals';
-        visuals.innerHTML='<canvas class="part-preview" width="160" height="100" aria-label="改造パーツ"></canvas><canvas class="choice-body-preview" width="180" height="130" aria-label="改造後の主人公プレビュー"></canvas>';
+        const itemIcon=createItemIcon(option.id,'item-icon-choice');
+        const bodyPreview=document.createElement('canvas');
+        bodyPreview.className='choice-body-preview';
+        bodyPreview.width=180;
+        bodyPreview.height=130;
+        bodyPreview.setAttribute('aria-label','改造後の主人公プレビュー');
+        visuals.append(itemIcon,bodyPreview);
         card.querySelector('h3').before(visuals);
-        drawPartIcon(visuals.querySelector('.part-preview'),family,1);
-        drawBodyPreview(visuals.querySelector('.choice-body-preview'),proposed);
+        drawBodyPreview(bodyPreview,proposed);
         const caption=document.createElement('span');
         caption.className='card-visual-caption';
         caption.textContent=`${proposed.stageLabelEn} / ${family.toUpperCase()} ${proposed.families.find(item=>item.id===family)?.count||1}`;
@@ -401,7 +412,26 @@
     screen.scrollTop=0;
   }
   function choose(index){if(!inRun||hold>0)return;const upgrading=engine.state==='upgrade';if(!upgrading&&engine.state!=='route')return;const options=upgrading?engine.offeredUpgrades:engine.routeOptions,option=options[index];if(!option)return;if(upgrading){engine.chooseUpgrade(option.id);addFeed('INSTALLED // '+option.name);updateBuild();syncRendererAppearance();}else engine.chooseRoute(option.id);syncState();}
-  function updateBuild(){const box=$('buildIcons');box.replaceChildren();const counts=new Map();for(const id of engine.upgrades)counts.set(id,(counts.get(id)||0)+1);for(const [id,count] of counts){const o=upgradeInfo.get(id)||NeonEngine.UPGRADES.find(u=>u.id===id),el=document.createElement('span');el.className='build-icon';el.style.color=o?.color||'#5af6f3';el.textContent=symbols[o?.tag]||'◇';el.title=(o?.name||id)+' ×'+count+' — '+(o?.description||'');if(count>1){const badge=document.createElement('sup');badge.textContent='×'+count;el.append(badge);}box.append(el);}}
+  function updateBuild(){
+    const box=$('buildIcons'),counts=new Map();
+    box.replaceChildren();
+    for(const id of engine.upgrades)counts.set(id,(counts.get(id)||0)+1);
+    for(const [id,count] of counts){
+      const item=upgradeInfo.get(id)||NeonEngine.UPGRADES.find(upgrade=>upgrade.id===id);
+      const slot=document.createElement('span');
+      slot.className='build-icon';
+      slot.title=`${item?.name||id} ×${count} — ${item?.description||''}`;
+      const icon=createItemIcon(id,'item-icon-build');
+      icon.alt=item?.name||id;
+      slot.append(icon);
+      if(count>1){
+        const badge=document.createElement('sup');
+        badge.textContent='×'+count;
+        slot.append(badge);
+      }
+      box.append(slot);
+    }
+  }
   function labCounts(){const counts={lightning:0,heat:0,drone:0,virus:0,armor:0,mobility:0};for(const id of lab.upgrades){const family=appearance?.UPGRADE_FAMILY?.[id];if(family)counts[family]++;}return counts;}
   function labUpgradesFromCounts(counts){const upgrades=[];for(const family of Object.keys(familyPreviewIds)){for(let i=0;i<Math.min(3,counts[family]||0);i++)upgrades.push(familyPreviewIds[family]);}return upgrades;}
   function renderLab(focusFamily=null){if(!lab.open)return;const visual=resolveAppearance(lab.loadout,lab.upgrades),body=appearance?.BODIES?.[lab.loadout];$('labBodyName').textContent=body?.label||bodies[lab.loadout];$('labStageName').textContent=visual.stageLabelEn||visual.stageLabel;const activeLabels=visual.families.map(family=>`${family.labelJa||family.label} T${family.tier}`).join(' · ');$('labSignature').textContent=activeLabels||'改造パーツなし';$('labPartsCount').textContent=`${visual.total} PARTS / ${visual.stage} STAGE`;$('labDominant').textContent=visual.dominant?`${visual.dominant.toUpperCase()} // DOMINANT SIGNAL`:'NO DOMINANT SIGNAL';const portrait=$('labPortrait');if(portrait){portrait.closest('.lab-portrait-column').classList.toggle('hidden',!body?.portrait);if(body?.portrait)portrait.src=body.portrait;portrait.alt=`${body?.label||bodies[lab.loadout]} の全身ポートレート`;}drawBodyPreview($('labBodyPreview'),visual);const catalog=new Map((globalThis.NeonEngine?.UPGRADES||[]).map(upgrade=>[upgrade.id,upgrade]));const ownedNames=lab.upgrades.map(id=>catalog.get(id)?.name||id);$('labOwnedUpgrades').previousElementSibling.textContent=lab.inGameplay?'OWNED AUGMENTS':'FITTED AUGMENTS';$('labOwnedUpgrades').textContent=ownedNames.length?ownedNames.join(' / '):(lab.inGameplay?'このランで取得した改造はまだありません':'試着中の改造はありません');$('labOwnedFamilies').textContent=activeLabels||'アクティブ系統なし';const bodyChoices=$('labBodyChoices');bodyChoices.replaceChildren();for(const id of ['runner','samurai','summoner']){const descriptor=appearance?.BODIES?.[id];const button=document.createElement('button');button.type='button';button.className='lab-body-choice'+(id===lab.loadout?' selected':'');button.dataset.loadout=id;button.innerHTML=`<img src="${descriptor?.portrait||`assets/characters/${id}.png`}" alt=""><span><b>${descriptor?.label||bodies[id]}</b><small>${descriptor?.role||''}</small></span><i>${id===lab.loadout?'ACTIVE':'SELECT'}</i>`;button.addEventListener('click',()=>{lab.loadout=id;renderLab();});bodyChoices.append(button);}
@@ -438,14 +468,14 @@
       card.style.setProperty('--item-color',item.color||col);
       const tag=document.createElement('small');tag.textContent=String(i+1).padStart(2,'0')+' / '+item.tag+(item.focus?' // SECTOR FOCUS':'');
       card.classList.toggle('focus-card',!!item.focus);
-      const art=document.createElement('canvas');art.width=200;art.height=130;art.setAttribute('aria-label',item.name+'の改造パーツ');
+      const art=createItemIcon(item.id,'item-icon-loot');
       const title=document.createElement('h3');title.textContent=item.name;
       const desc=document.createElement('p');desc.textContent=item.description;
       const installed=document.createElement('b');const count=engine.upgrades.filter(id=>id===item.id).length;
       installed.textContent=`所持 ×${count} → ×${count+1} / 選択して装着 ↗`;
       card.append(tag,art,title,desc,upgradeComparison(item.id),installed);
       card.addEventListener('click',()=>{if(engine.chestReward===reward&&reward.items.length===round)chooseChest(i);});
-      box.append(card);drawPartIcon(art,appearance.UPGRADE_FAMILY[item.id],1);
+      box.append(card);
     }
     updateBuild();const visual=syncRendererAppearance();drawBodyPreview($('chestBodyPreview'),visual);
     $('chestBuildStats').textContent=`${engine.upgrades.length} AUGMENTS / ${visual.stageLabelEn}`;
