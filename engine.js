@@ -47,7 +47,7 @@
     { id: 'coolant_loop', name: 'クーラント・ループ', tag: 'HEAT', color: '#46d8ff', description: '冷却速度 +28、最大熱量 +22。連射を止めない', apply: (s) => { s.coolRate += 28; s.maxHeat += 22; } },
     { id: 'molten_core', name: 'マグマ・コア', tag: 'HEAT', color: '#ff713e', description: '最大熱量 +30、ダメージ倍率 ×1.30（最大3個）', maxStack: 3, apply: (s) => { s.maxHeat += 30; s.damageMult *= 1.3; } },
     { id: 'dash_reactor', name: 'ダッシュ・リアクター', tag: 'MOBILITY', color: '#53ffcf', description: 'ダッシュ待機 -0.30秒（最短0.28秒）、通過ダメージ +65', apply: (s) => { s.dashCooldown = Math.max(0.28, s.dashCooldown - 0.3); s.dashDamage += 65; } },
-    { id: 'phase_shield', name: 'フェイズ・シールド', tag: 'SURVIVE', color: '#79a7ff', description: '被弾を2回無効化するシールドを追加', apply: (s) => { s.shield += 2; } },
+    { id: 'phase_shield', name: 'フェイズ・シールド', tag: 'SURVIVE', color: '#79a7ff', description: '被弾を2回無効化するシールドを追加。装甲共鳴Lv2以上では、取得数×2まで6秒ごとに1回再生', apply: (s) => { s.shield += 2; s.phaseShieldCapacity = (s.phaseShieldCapacity || 0) + 2; } },
     { id: 'nanobots', name: 'ナノ・リペア', tag: 'SURVIVE', color: '#77ff9c', description: '敵を倒すたびHPを1.85回復。連鎖キルは2倍', apply: (s) => { s.healOnKill += 1.85; } },
     { id: 'drone_fabricator', name: 'ドローン工場', tag: 'DRONE', color: '#c37aff', description: '追従ドローン +2（最大12）。上限超過分は1体ごと火力 +4', apply: (s) => { const room = Math.max(0, 12 - s.droneCount); const added = Math.min(2, room); s.droneCount += added; s.droneOverflow += 2 - added; s.droneDamage += 6 + s.droneOverflow * 4; } },
     { id: 'drone_laser', name: 'ドローン・レーザー', tag: 'DRONE', color: '#f05dff', description: 'ドローン攻撃力 +24、レーザー貫通 +1（最大5）', apply: (s) => { s.droneDamage += 24; s.dronePierce = Math.min(5, s.dronePierce + 1); } },
@@ -137,7 +137,7 @@
     heat: { name: '熱共鳴', levels: ['射撃・斬撃が敵を3秒間炎上させる（毎秒、命中ダメージの80%）', '炎上中の敵は倒れると爆発して周囲に燃え移る。オーバーヒートは熱波になり即座に半分まで冷却', '射撃・斬撃の間隔 ×0.7、炎上ダメージ ×2'], grant: [] },
     drone: { name: 'ドローン共鳴', levels: ['ドローン +1、ドローン威力 ×1.3', 'ドローン弾が着弾時に爆発する', 'ドローン射撃間隔 ×0.7'], grant: [(st) => { st.droneCount = Math.min(12, st.droneCount + 1); }] },
     virus: { name: '感染共鳴', levels: ['感染を解放。すべての攻撃が感染を付与し、感染ダメージ ×3', '感染した敵は倒れると爆発し、感染を広げる', '感染中の敵への全ダメージ +40%'], grant: [(st) => { st.virus = true; }] },
-    armor: { name: '装甲共鳴', levels: ['被ダメージ -30%。帯電装甲が半径130以内の敵を焼く（毎秒、最大HPの80%）', '被弾無効シールドが6秒ごとに1枚再生。被弾・シールド消費時に、最大HPに比例した反撃波（周囲をスタン）', '反撃波の威力 ×2、毎秒最大HPの2%を再生'], grant: [] },
+    armor: { name: '装甲共鳴', levels: ['被ダメージ -30%。帯電装甲が半径130以内の敵を焼く（毎秒、最大HPの80%）', '残りが上限未満なら、被弾無効シールドが6秒ごとに1枚再生（フェイズ・シールド取得数×2、未取得時は1枚）', 'シールド再生の上限を維持したまま、毎秒最大HPの2%を再生'], grant: [] },
     mobility: { name: '機動共鳴', levels: ['ダッシュ通過ダメージ ×4', 'ダッシュで敵を倒すと待機をリセットし、2秒間 全ダメージ +35%', 'ダッシュ距離 +70、通過ダメージさらに ×2'], grant: [] }
   };
 
@@ -166,7 +166,7 @@
       sector: { label: '高速搬送路', threat: 1, focus: 'mobility', hpMult: 0.9, speedMult: 1.25, dashCooldownMult: 0.6 }, effects: ['敵：速度 +25%、HP -10%', '環境：ダッシュ待機 -40%'] },
     { id: 'kill_zone', kind: 'sector', name: '処刑場', tag: 'SECTOR / KILL ZONE', symbol: '☠', color: '#ff375f', description: '精鋭だらけの処刑場。共鳴は得られないが、見返りは大きい。',
       sector: { label: '処刑場', threat: 1, weights: { rush: 0.2, shooter: 0.25, tank: 0.15, elite: 0.4 }, quotaMult: 0.7, extraChest: 'legendary' }, effects: ['敵：精鋭 40%、撃破ノルマ -30%', '報酬：Legendary宝箱 +1'] },
-    { id: 'armory', kind: 'boss', name: '武器庫', tag: 'BOSS PREP', symbol: '✳', color: '#fff05a', description: '被弾無効シールド +2。BLACKOUT を充填した状態でボス戦を始める', apply: (e, s) => { s.shield += 2; e.player.energy = e.player.maxEnergy; } },
+    { id: 'armory', kind: 'boss', name: '武器庫', tag: 'BOSS PREP', symbol: '✳', color: '#fff05a', description: '被弾無効シールド +2（再生上限には加算されない）。BLACKOUT を充填した状態でボス戦を始める', apply: (e, s) => { s.shield += 2; e.player.energy = e.player.maxEnergy; } },
     { id: 'weakpoint', kind: 'boss', name: '弱点解析', tag: 'BOSS PREP', symbol: '◎', color: '#ff7fbd', description: '最大HP -20。CERBERUS の適応装甲が通す火力 +50%', apply: (e, s) => { e.player.maxHp = Math.max(60, e.player.maxHp - 20); e.player.hp = Math.min(e.player.maxHp, e.player.hp); e._bossArmorBoost = 1.5; } }
   ];
 
@@ -246,7 +246,7 @@
         maxHeat: 100, coolRate: 16, heatBonus: 0.35, chain: 0, chainDamage: 0.9, virus: false, virusDamage: 8, virusSpread: false,
         hackRadius: 230, hackDamage: 34, moveSpeed: 300, dashCooldown: 0.9, dashDistance: 190, dashDamage: 30, dashRadius: 65,
         slashRadius: 150, slashDamage: 34, slashInterval: 0.7, droneCount: 0, droneDamage: 12, droneInterval: 1.0, dronePierce: 0,
-        shield: 0, healOnKill: 0.1, pickupRadius: 90, energyGain: 8, maxEnergy: 100, ultimateMult: 1, scoreMult: 1, luck: 0,
+        shield: 0, phaseShieldCapacity: 0, healOnKill: 0.1, pickupRadius: 90, energyGain: 8, maxEnergy: 100, ultimateMult: 1, scoreMult: 1, luck: 0,
         enemySpeedMult: 1, bossDamageMult: 1, armor: 0.1, regen: 0.35, droneOverflow: 0
       };
     }
@@ -360,6 +360,7 @@
         { label: '最大HP', value: player.maxHp, format: 'integer' },
         { label: '現在HP', value: Math.ceil(player.hp), format: 'integer' },
         { label: '被弾無効', value: player.shield, format: 'charges' },
+        { label: '装甲共鳴Lv2時の再生上限', value: Math.max(1, stats.phaseShieldCapacity || 0), format: 'charges' },
         { label: '撃破回復', value: stats.healOnKill, format: 'hp' },
         { label: '吸引範囲', value: stats.pickupRadius, format: 'integer' },
         { label: '撃破エネルギー', value: stats.energyGain, format: 'energy' },
@@ -626,15 +627,22 @@
       const wasOver = this.player.overheated;
       this.player.heat = Math.max(0, this.player.heat - this._stats.coolRate * ((this.sector && this.sector.coolRateMult) || 1) * dt);
       this.player.surge = Math.max(0, (this.player.surge || 0) - dt);
-      // Armor resonance II: an empty shield comes back on its own.
-      if (this.resonance.armor >= 2 && this.player.shield < 1) {
+      // Armor resonance II: replenish one shield every six seconds, up to the
+      // capacity provided by the phase-shield upgrades. The armory route can
+      // temporarily put the current count above this capacity, so it never
+      // removes charges and simply waits until the count falls below the cap.
+      const shieldCapacity = this._shieldCapacity();
+      if (this.resonance.armor >= 2 && this.player.shield < shieldCapacity) {
         this.player.shieldRegen = (this.player.shieldRegen || 0) + dt;
-        if (this.player.shieldRegen >= 6) {
-          this.player.shieldRegen = 0;
-          this.player.shield = 1;
-          this._stats.shield = 1;
+        if (this.player.shieldRegen + 1e-9 >= 6) {
+          this.player.shieldRegen = Math.max(0, this.player.shieldRegen - 6);
+          this.player.shield = Math.min(shieldCapacity, this.player.shield + 1);
+          this._stats.shield = this.player.shield;
+          if (this.player.shield >= shieldCapacity) this.player.shieldRegen = 0;
           this._emit('shieldUp', { x: this.player.x, y: this.player.y, color: '#79a7ff' });
         }
+      } else {
+        this.player.shieldRegen = 0;
       }
       const regen = this._stats.regen + (this.resonance.armor >= 3 ? this.player.maxHp * 0.02 : 0);
       if (regen > 0) this.player.hp = Math.min(this.player.maxHp, this.player.hp + regen * dt);
@@ -842,7 +850,7 @@
         if (e.dead) continue;
         // Armor resonance I: charged plating hurts whatever closes in, scaled by max HP.
         if (this.resonance.armor >= 1 && distance(this.player, e) <= 130 + e.r) {
-          this._damageEnemy(e, this.player.maxHp * 0.8 * dt, { source: 'counter', color: '#79a7ff', silent: true });
+          this._damageEnemy(e, this.player.maxHp * 0.8 * dt, { source: 'armor', color: '#79a7ff', silent: true });
           if (e.dead) continue;
         }
         if (e.burn > 0) {
@@ -1213,6 +1221,10 @@
       return true;
     }
 
+    _shieldCapacity() {
+      return Math.max(1, this._stats.phaseShieldCapacity || 0);
+    }
+
     _openChests(chests) {
       if (this.state !== 'playing' || !chests || !chests.length) return false;
       let rarity = 'rare';
@@ -1362,7 +1374,6 @@
         this._stats.shield = this.player.shield;
         this.player.invuln = 0.22;
         this._emit('shield', { x: this.player.x, y: this.player.y, color: '#79a7ff' });
-        this._counterWave();
         return;
       }
       const grace = this.elapsed < this.beginnerGrace ? 0.7 : 1;
@@ -1373,20 +1384,6 @@
       this.player.invuln = 0.28;
       this._emit('damage', { x: this.player.x, y: this.player.y, tx: x, ty: y, color: color || '#ff4d8e', amount: actual });
       if (this.player.hp <= 0) { this._die(); return; }
-      this._counterWave();
-    }
-
-    // Armor resonance II: every hit taken (or absorbed by a shield) answers with a stunning shockwave.
-    _counterWave() {
-      if (this.resonance.armor < 2 || this.state !== 'playing') return;
-      this._emit('counter', { x: this.player.x, y: this.player.y, radius: 240, color: '#79a7ff' });
-      for (const e of this.enemies.slice()) {
-        if (e.dead || distance(this.player, e) > 240 + e.r) continue;
-        e.stun = Math.max(e.stun, 1);
-        e.pendingShots = [];
-        e.telegraph = null;
-        this._damageEnemy(e, this.player.maxHp * (this.resonance.armor >= 3 ? 4 : 2), { source: 'counter', color: '#79a7ff' });
-      }
     }
 
     _checkFloorProgress() {

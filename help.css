@@ -53,6 +53,7 @@ h1 { margin-bottom: 18px; font-size: clamp(42px, 8vw, 92px); line-height: .9; le
 .item-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .item-card { --item-color: var(--cyan); display: grid; grid-template-rows: auto 1fr auto; min-width: 0; padding: 15px; border: 1px solid color-mix(in srgb, var(--item-color) 48%, transparent); background: linear-gradient(145deg, #172534, #0b121b 78%); }
 .item-card:hover { border-color: var(--item-color); }
+.item-card[id] { scroll-margin-top: 96px; }
 .item-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 18px; }
 .item-card-code { color: var(--item-color); font: 9px monospace; letter-spacing: 1px; }
 .item-card-main { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 13px; align-items: center; padding: 17px 0 14px; }

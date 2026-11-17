@@ -58,7 +58,7 @@
       case'death':this.tone(220,1.3,'sawtooth',.2,28);this.tone(110,1.5,'square',.1,20);this.noise(.7,.25);break;
       case'start':this.tone(110,.5,'sawtooth',.12,880);this.noise(.2,.1);break;
       case'resonance':for(let i=0;i<3;i++)this.tone([523.25,783.99,1046.5][i],.5,'sine',.14,0,now+i*.14);this.tone(130.81,.9,'triangle',.12);break;
-      case'heatwave':case'counter':this.tone(140,.3,'sawtooth',.14,40);this.noise(.2,.14);break;}}
+      case'heatwave':this.tone(140,.3,'sawtooth',.14,40);this.noise(.2,.14);break;}}
   }
   const audio=new AudioSystem();const renderer=new NeonRenderer($('game'));
   let selected='runner',paused=false,inRun=false,lastState='title',lastTime=0,hudTimer=0,toastTimer,runSerial=0,previewLast=0,freeze=0,slowTime=0,slowScale=1,hold=0,holdAction=null,lastCombo=0,lastStop=-1e9;
@@ -503,7 +503,7 @@
   }
 
   // The identity of the finished run: which resonances it grew and where its damage came from.
-  const sourceLabels={shot:'射撃',drone:'ドローン',chain:'連鎖',slash:'斬撃',dash:'ダッシュ',wire:'拘束ワイヤー',hack:'ハック',virus:'感染',heat:'延焼・熱波',counter:'反撃波',ultimate:'BLACKOUT'};
+  const sourceLabels={shot:'射撃',drone:'ドローン',chain:'連鎖',slash:'斬撃',dash:'ダッシュ',wire:'拘束ワイヤー',hack:'ハック',virus:'感染',heat:'延焼・熱波',armor:'帯電装甲',ultimate:'BLACKOUT'};
   function runSummary(){
     const grown=NeonEngine.RESONANCE.filter(def=>engine.resonance?.[def.family]>0).map(def=>`${def.name} Lv${engine.resonance[def.family]}`);
     const dealt=Object.entries(engine.damageDealt||{}).sort((a,b)=>b[1]-a[1]),total=dealt.reduce((sum,[,value])=>sum+value,0)||1;

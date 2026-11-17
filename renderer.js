@@ -322,7 +322,6 @@
         this.label(x,Math.max(300,y-130),'LIMITER RELEASED',P.pink,34,1.8,{vy:-12,font:'Impact'});break;
       case 'resonance':this.pillar(x,y,color,1.1,60,800);this.rays(x,y,color,16,520,1.1);this.ring(x,y,260,color,.8,{sides:6,width:10});this.ring(x,y,170,'#ffffff',.5,{fill:true});this.embers(x,y,color,24,60);this.glyphs(x,y,color,16,1.4);this.flare(x,y,220,color,.4);this.kick(6,.5,.5);this.label(x,y-110,(e.name||'RESONANCE')+' Lv'+(e.level||1),color,30,1.8,{vy:-14,font:'Impact'});break;
       case 'heatwave':this.ring(x,y,e.radius||320,P.orange,.55,{width:16,fill:true});this.ring(x,y,(e.radius||320)*.7,P.yellow,.4,{width:6});this.burst(x,y,P.orange,90,2.2,true);this.embers(x,y,P.orange,26,90);this.flare(x,y,260,P.orange,.3);this.kick(9,.5,.6);break;
-      case 'counter':this.ring(x,y,e.radius||240,'#79a7ff',.45,{sides:6,width:12});this.ring(x,y,(e.radius||240)*.6,'#ffffff',.3,{fill:true});this.shards(x,y,'#79a7ff',12,1.2);this.flare(x,y,180,'#79a7ff',.25);this.kick(6,.3,.4);break;
       case 'viralBurst':this.ring(x,y,e.radius||170,P.green,.4,{width:6,fill:true});this.glyphs(x,y,P.green,8,1.1);this.burst(x,y,P.green,14,.9);break;
       case 'splash':this.ring(x,y,e.radius||90,'#c37aff',.25,{width:4,fill:true});break;
       case 'scorch':this.ring(x,y,e.radius||140,P.orange,.35,{width:6,fill:true});this.burst(x,y,P.orange,16,1.1);this.embers(x,y,P.orange,6,40);this.flare(x,y,90,P.orange,.16);break;

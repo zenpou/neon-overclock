@@ -43,6 +43,7 @@
   function renderCard(item, index, type) {
     const isGear = type === 'gear';
     const card = document.createElement('article');
+    card.id = item.id;
     card.className = 'item-card';
     card.style.setProperty('--item-color', item.color || fallbackColors[index % fallbackColors.length]);
     const head = document.createElement('div');

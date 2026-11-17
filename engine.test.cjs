@@ -773,7 +773,7 @@ console.table(runResults);
   assert.ok(Math.abs((before - far.hp) - far.burnDps) < far.burnDps * 0.05, 'one second of burning deals one second of burn damage');
   assert.ok((engine.damageDealt.heat || 0) > heatBefore, 'burn damage is tracked as its own source');
 
-  // 装甲：帯電装甲は近い敵だけを焼く。Lv2で空のシールドが6秒で戻る。
+  // 装甲：帯電装甲は近い敵だけを焼く。Lv1ではシールドを再生しない。
   engine._gainResonance('armor');
   const near = dummy(engine.player.x + 60, engine.player.y, 1e6);
   const nearBefore = near.hp, farBefore = far.hp;
@@ -781,15 +781,74 @@ console.table(runResults);
   for (let i = 0; i < 60; i++) { engine.player.invuln = 1; engine.player.fireCooldown = 9; engine.update(1 / 60, { x: 0, y: 0 }); engine.bullets.length = 0; }
   assert.ok(nearBefore - near.hp > engine.player.maxHp * 0.7, 'charged plating burns an adjacent enemy for about 80% of max HP per second');
   assert.equal(far.hp, farBefore, 'charged plating does not reach distant enemies');
+  assert.ok((engine.damageDealt.armor || 0) > 0, 'charged plating damage is tracked as armor');
+
+  engine._applyUpgrade('phase_shield', 'test');
+  engine._applyUpgrade('phase_shield', 'test');
+  assert.equal(engine.player.shield, 4, 'two phase shields provide four charges');
+  for (let i = 0; i < 4; i++) {
+    engine.player.invuln = 0;
+    engine._damagePlayer(50, near.x, near.y, '#fff');
+  }
+  assert.equal(engine.player.shield, 0, 'all phase shield charges can be consumed');
+
+  const advance = (seconds) => {
+    for (let i = 0; i < seconds * 60 + 2; i++) {
+      engine.player.invuln = 1;
+      engine.player.fireCooldown = 9;
+      engine.update(1 / 60, { x: 0, y: 0 });
+      engine.bullets.length = 0;
+    }
+  };
+  advance(6);
+  assert.equal(engine.player.shield, 0, 'armor resonance I does not regenerate shields');
+
+  // Lv2 restores one charge every six seconds until the phase-shield capacity.
   engine._gainResonance('armor');
-  assert.equal(engine.player.shield, 0);
-  for (let i = 0; i < 6 * 60 + 2; i++) { engine.player.invuln = 1; engine.player.fireCooldown = 9; engine.update(1 / 60, { x: 0, y: 0 }); engine.bullets.length = 0; }
+  advance(6);
   assert.equal(engine.player.shield, 1, 'armor resonance II restores an empty shield after six seconds');
+  advance(6);
+  assert.equal(engine.player.shield, 2, 'armor resonance II restores a second charge after twelve seconds');
+  advance(12);
+  assert.equal(engine.player.shield, 4, 'two phase shields restore up to four charges');
+  const shieldUpEvents = engine.events.filter((event) => event.type === 'shieldUp');
+  assert.equal(shieldUpEvents.length, 4, 'shield regeneration emits one event per restored charge');
+
   engine.player.invuln = 0;
-  const hp = engine.player.hp, nearHp = near.hp;
+  const hp = engine.player.hp, nearHp = near.hp, eventsBeforeHit = engine.events.length;
   engine._damagePlayer(50, near.x, near.y, '#fff');
   assert.equal(engine.player.hp, hp, 'the restored shield absorbs the hit');
-  assert.ok(nearHp - near.hp >= engine.player.maxHp * 2 * 0.99, 'absorbing a hit answers with a counter wave scaled by max HP');
+  assert.equal(engine.player.shield, 3, 'a hit consumes one restored shield charge');
+  assert.equal(near.hp, nearHp, 'shield consumption has no counterattack damage');
+  assert.equal(engine.damageDealt.counter, undefined, 'counterattack damage is removed');
+  assert.equal(engine.events.slice(eventsBeforeHit).some((event) => event.type === 'counter'), false, 'shield consumption emits no counterattack event');
+
+  advance(6);
+  assert.equal(engine.player.shield, 4, 'regeneration resumes after a charge is consumed');
+
+  engine.player.shield = 0;
+  engine._stats.shield = 0;
+  engine.player.shieldRegen = 0;
+  engine._updateTimers(6.5);
+  assert.equal(engine.player.shield, 1, 'a six-second interval restores one charge');
+  assert.ok(Math.abs(engine.player.shieldRegen - 0.5) < 1e-9, 'excess recharge time carries into the next interval');
+  engine._updateTimers(5.5);
+  assert.equal(engine.player.shield, 2, 'the carried interval restores the next charge at twelve seconds');
+
+  const baseArmor = new NeonEngine({ random: seeded(10) });
+  baseArmor.start('runner');
+  baseArmor._gainResonance('armor');
+  baseArmor._gainResonance('armor');
+  const advanceBase = () => {
+    for (let i = 0; i < 6 * 60 + 2; i++) {
+      baseArmor.player.invuln = 1;
+      baseArmor.update(1 / 60, { x: 0, y: 0 });
+    }
+  };
+  advanceBase();
+  assert.equal(baseArmor.player.shield, 1, 'armor resonance without phase shields restores one charge');
+  advanceBase();
+  assert.equal(baseArmor.player.shield, 1, 'the default one-charge capacity does not grow by itself');
   console.log('engine tests passed: heat ignition and armor resonance');
 }
 
