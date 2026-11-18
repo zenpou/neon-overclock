@@ -773,7 +773,8 @@ console.table(runResults);
   assert.ok(Math.abs((before - far.hp) - far.burnDps) < far.burnDps * 0.05, 'one second of burning deals one second of burn damage');
   assert.ok((engine.damageDealt.heat || 0) > heatBefore, 'burn damage is tracked as its own source');
 
-  // 装甲：帯電装甲は近い敵だけを焼く。Lv1ではシールドを再生しない。
+  // 装甲：帯電装甲は近い敵だけを焼く。シールドの再生間隔は
+  // フェイズ・シールド単体で12秒、装甲共鳴Lv2以上で6秒。
   engine._gainResonance('armor');
   const near = dummy(engine.player.x + 60, engine.player.y, 1e6);
   const nearBefore = near.hp, farBefore = far.hp;
@@ -783,72 +784,127 @@ console.table(runResults);
   assert.equal(far.hp, farBefore, 'charged plating does not reach distant enemies');
   assert.ok((engine.damageDealt.armor || 0) > 0, 'charged plating damage is tracked as armor');
 
-  engine._applyUpgrade('phase_shield', 'test');
-  engine._applyUpgrade('phase_shield', 'test');
-  assert.equal(engine.player.shield, 4, 'two phase shields provide four charges');
-  for (let i = 0; i < 4; i++) {
-    engine.player.invuln = 0;
-    engine._damagePlayer(50, near.x, near.y, '#fff');
-  }
-  assert.equal(engine.player.shield, 0, 'all phase shield charges can be consumed');
-
-  const advance = (seconds) => {
-    for (let i = 0; i < seconds * 60 + 2; i++) {
-      engine.player.invuln = 1;
-      engine.player.fireCooldown = 9;
-      engine.update(1 / 60, { x: 0, y: 0 });
-      engine.bullets.length = 0;
-    }
+  const advanceTimers = (instance, seconds) => {
+    const frames = Math.floor(seconds * 60);
+    for (let i = 0; i < frames; i++) instance._updateTimers(1 / 60);
+    const remainder = seconds - frames / 60;
+    if (remainder > 1e-9) instance._updateTimers(remainder);
   };
-  advance(6);
-  assert.equal(engine.player.shield, 0, 'armor resonance I does not regenerate shields');
+  const emptyShield = (instance) => {
+    instance.player.shield = 0;
+    instance._stats.shield = 0;
+    instance.player.shieldRegen = 0;
+  };
 
-  // Lv2 restores one charge every six seconds until the phase-shield capacity.
-  engine._gainResonance('armor');
-  advance(6);
-  assert.equal(engine.player.shield, 1, 'armor resonance II restores an empty shield after six seconds');
-  advance(6);
-  assert.equal(engine.player.shield, 2, 'armor resonance II restores a second charge after twelve seconds');
-  advance(12);
-  assert.equal(engine.player.shield, 4, 'two phase shields restore up to four charges');
+  const soloShield = new NeonEngine({ random: seeded(10) });
+  soloShield.start('runner');
+  soloShield.enemies.length = 0;
+  soloShield._applyUpgrade('phase_shield', 'test');
+  assert.equal(soloShield.player.shield, 2, 'one phase shield provides two charges');
+  emptyShield(soloShield);
+  advanceTimers(soloShield, 11.9);
+  assert.equal(soloShield.player.shield, 0, 'a phase shield waits twelve seconds before its first recharge');
+  advanceTimers(soloShield, 0.1);
+  assert.equal(soloShield.player.shield, 1, 'a phase shield recharges one charge after twelve seconds without resonance');
+  advanceTimers(soloShield, 12);
+  assert.equal(soloShield.player.shield, 2, 'a phase shield recharges its second charge after another twelve seconds');
+  advanceTimers(soloShield, 24);
+  assert.equal(soloShield.player.shield, 2, 'recharge stops at one phase shield capacity');
+
+  // Armor resonance I keeps the twelve-second interval.
+  engine._applyUpgrade('phase_shield', 'test');
+  emptyShield(engine);
+  advanceTimers(engine, 11.9);
+  assert.equal(engine.player.shield, 0, 'armor resonance I still waits twelve seconds');
+  advanceTimers(engine, 0.1);
+  assert.equal(engine.player.shield, 1, 'armor resonance I recharges a phase shield after twelve seconds');
+
+  // Lv2 and Lv3 halve the interval, while the phase-shield count still owns the cap.
+  const twoShields = new NeonEngine({ random: seeded(10) });
+  twoShields.start('runner');
+  twoShields.enemies.length = 0;
+  twoShields._applyUpgrade('phase_shield', 'test');
+  twoShields._applyUpgrade('phase_shield', 'test');
+  assert.equal(twoShields.player.shield, 4, 'two phase shields provide four charges');
+  emptyShield(twoShields);
+  twoShields._gainResonance('armor');
+  twoShields._gainResonance('armor');
+  advanceTimers(twoShields, 5.9);
+  assert.equal(twoShields.player.shield, 0, 'armor resonance II waits six seconds');
+  advanceTimers(twoShields, 0.1);
+  assert.equal(twoShields.player.shield, 1, 'armor resonance II restores one charge after six seconds');
+  advanceTimers(twoShields, 18);
+  assert.equal(twoShields.player.shield, 4, 'two phase shields restore up to four charges');
+  twoShields._gainResonance('armor');
+  emptyShield(twoShields);
+  advanceTimers(twoShields, 6);
+  assert.equal(twoShields.player.shield, 1, 'armor resonance III keeps the six-second interval');
+
+  // Progress made before Lv2 is retained when resonance improves mid-run.
+  const midRun = new NeonEngine({ random: seeded(11) });
+  midRun.start('runner');
+  midRun._applyUpgrade('phase_shield', 'test');
+  emptyShield(midRun);
+  midRun._gainResonance('armor');
+  advanceTimers(midRun, 5);
+  midRun._gainResonance('armor');
+  advanceTimers(midRun, 1);
+  assert.equal(midRun.player.shield, 1, 'Lv2 uses the five seconds already spent recharging');
+
+  // Time spent while the game is paused is not counted toward a recharge.
+  const paused = new NeonEngine({ random: seeded(13) });
+  paused.start('runner');
+  paused._applyUpgrade('phase_shield', 'test');
+  emptyShield(paused);
+  paused.state = 'upgrade';
+  for (let i = 0; i < 30; i++) paused.update(1, {});
+  paused.state = 'playing';
+  advanceTimers(paused, 11.9);
+  assert.equal(paused.player.shield, 0, 'paused time does not advance shield recharge');
+  advanceTimers(paused, 0.1);
+  assert.equal(paused.player.shield, 1, 'recharge starts after six or twelve seconds of active combat only');
+
+  // Reaching the cap does not bank elapsed time for the next charge.
+  twoShields.player.shield = 4;
+  twoShields._stats.shield = 4;
+  twoShields.player.shieldRegen = 0;
+  advanceTimers(twoShields, 30);
+  twoShields.player.shield = 3;
+  twoShields._stats.shield = 3;
+  advanceTimers(twoShields, 5.9);
+  assert.equal(twoShields.player.shield, 3, 'time spent at capacity is not banked');
+  advanceTimers(twoShields, 0.1);
+  assert.equal(twoShields.player.shield, 4, 'recharge starts a fresh six-second interval after leaving capacity');
+
+  // A temporary Armory shield does not create a recharge capacity by itself.
+  const armory = new NeonEngine({ random: seeded(12) });
+  armory.start('runner');
+  armory.state = 'route';
+  armory.routeOptions = [{ id: 'armory' }];
+  assert.equal(armory.chooseRoute('armory'), true);
+  assert.equal(armory.player.shield, 2, 'Armory grants two temporary shield charges');
+  armory._gainResonance('armor');
+  armory._gainResonance('armor');
+  advanceTimers(armory, 24);
+  assert.equal(armory.player.shield, 2, 'unused Armory charges stay available');
+  emptyShield(armory);
+  advanceTimers(armory, 24);
+  assert.equal(armory.player.shield, 0, 'spent Armory charges do not regenerate without a phase shield');
   const shieldUpEvents = engine.events.filter((event) => event.type === 'shieldUp');
-  assert.equal(shieldUpEvents.length, 4, 'shield regeneration emits one event per restored charge');
+  assert.equal(shieldUpEvents.length, 1, 'one phase shield emits one event per restored charge');
 
+  advanceTimers(engine, 12);
+  engine._gainResonance('armor');
   engine.player.invuln = 0;
   const hp = engine.player.hp, nearHp = near.hp, eventsBeforeHit = engine.events.length;
   engine._damagePlayer(50, near.x, near.y, '#fff');
   assert.equal(engine.player.hp, hp, 'the restored shield absorbs the hit');
-  assert.equal(engine.player.shield, 3, 'a hit consumes one restored shield charge');
+  assert.equal(engine.player.shield, 1, 'a hit consumes one restored shield charge');
   assert.equal(near.hp, nearHp, 'shield consumption has no counterattack damage');
   assert.equal(engine.damageDealt.counter, undefined, 'counterattack damage is removed');
   assert.equal(engine.events.slice(eventsBeforeHit).some((event) => event.type === 'counter'), false, 'shield consumption emits no counterattack event');
-
-  advance(6);
-  assert.equal(engine.player.shield, 4, 'regeneration resumes after a charge is consumed');
-
-  engine.player.shield = 0;
-  engine._stats.shield = 0;
-  engine.player.shieldRegen = 0;
-  engine._updateTimers(6.5);
-  assert.equal(engine.player.shield, 1, 'a six-second interval restores one charge');
-  assert.ok(Math.abs(engine.player.shieldRegen - 0.5) < 1e-9, 'excess recharge time carries into the next interval');
-  engine._updateTimers(5.5);
-  assert.equal(engine.player.shield, 2, 'the carried interval restores the next charge at twelve seconds');
-
-  const baseArmor = new NeonEngine({ random: seeded(10) });
-  baseArmor.start('runner');
-  baseArmor._gainResonance('armor');
-  baseArmor._gainResonance('armor');
-  const advanceBase = () => {
-    for (let i = 0; i < 6 * 60 + 2; i++) {
-      baseArmor.player.invuln = 1;
-      baseArmor.update(1 / 60, { x: 0, y: 0 });
-    }
-  };
-  advanceBase();
-  assert.equal(baseArmor.player.shield, 1, 'armor resonance without phase shields restores one charge');
-  advanceBase();
-  assert.equal(baseArmor.player.shield, 1, 'the default one-charge capacity does not grow by itself');
+  advanceTimers(engine, 6);
+  assert.equal(engine.player.shield, 2, 'the spent charge regenerates after six seconds at armor resonance II');
   console.log('engine tests passed: heat ignition and armor resonance');
 }
 

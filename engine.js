@@ -47,7 +47,7 @@
     { id: 'coolant_loop', name: 'クーラント・ループ', tag: 'HEAT', color: '#46d8ff', description: '冷却速度 +28、最大熱量 +22。連射を止めない', apply: (s) => { s.coolRate += 28; s.maxHeat += 22; } },
     { id: 'molten_core', name: 'マグマ・コア', tag: 'HEAT', color: '#ff713e', description: '最大熱量 +30、ダメージ倍率 ×1.30（最大3個）', maxStack: 3, apply: (s) => { s.maxHeat += 30; s.damageMult *= 1.3; } },
     { id: 'dash_reactor', name: 'ダッシュ・リアクター', tag: 'MOBILITY', color: '#53ffcf', description: 'ダッシュ待機 -0.30秒（最短0.28秒）、通過ダメージ +65', apply: (s) => { s.dashCooldown = Math.max(0.28, s.dashCooldown - 0.3); s.dashDamage += 65; } },
-    { id: 'phase_shield', name: 'フェイズ・シールド', tag: 'SURVIVE', color: '#79a7ff', description: '被弾を2回無効化するシールドを追加。装甲共鳴Lv2以上では、取得数×2まで6秒ごとに1回再生', apply: (s) => { s.shield += 2; s.phaseShieldCapacity = (s.phaseShieldCapacity || 0) + 2; } },
+    { id: 'phase_shield', name: 'フェイズ・シールド', tag: 'SURVIVE', color: '#79a7ff', description: '取得時に被弾を防ぐシールドを2回分追加。使った分は戦闘中12秒ごとに1回分回復し、装甲共鳴Lv2以上なら6秒ごとに回復する。回復上限は取得数×2回分。', apply: (s) => { s.shield += 2; s.phaseShieldCapacity += 2; } },
     { id: 'nanobots', name: 'ナノ・リペア', tag: 'SURVIVE', color: '#77ff9c', description: '敵を倒すたびHPを1.85回復。連鎖キルは2倍', apply: (s) => { s.healOnKill += 1.85; } },
     { id: 'drone_fabricator', name: 'ドローン工場', tag: 'DRONE', color: '#c37aff', description: '追従ドローン +2（最大12）。上限超過分は1体ごと火力 +4', apply: (s) => { const room = Math.max(0, 12 - s.droneCount); const added = Math.min(2, room); s.droneCount += added; s.droneOverflow += 2 - added; s.droneDamage += 6 + s.droneOverflow * 4; } },
     { id: 'drone_laser', name: 'ドローン・レーザー', tag: 'DRONE', color: '#f05dff', description: 'ドローン攻撃力 +24、レーザー貫通 +1（最大5）', apply: (s) => { s.droneDamage += 24; s.dronePierce = Math.min(5, s.dronePierce + 1); } },
@@ -137,7 +137,7 @@
     heat: { name: '熱共鳴', levels: ['射撃・斬撃が敵を3秒間炎上させる（毎秒、命中ダメージの80%）', '炎上中の敵は倒れると爆発して周囲に燃え移る。オーバーヒートは熱波になり即座に半分まで冷却', '射撃・斬撃の間隔 ×0.7、炎上ダメージ ×2'], grant: [] },
     drone: { name: 'ドローン共鳴', levels: ['ドローン +1、ドローン威力 ×1.3', 'ドローン弾が着弾時に爆発する', 'ドローン射撃間隔 ×0.7'], grant: [(st) => { st.droneCount = Math.min(12, st.droneCount + 1); }] },
     virus: { name: '感染共鳴', levels: ['感染を解放。すべての攻撃が感染を付与し、感染ダメージ ×3', '感染した敵は倒れると爆発し、感染を広げる', '感染中の敵への全ダメージ +40%'], grant: [(st) => { st.virus = true; }] },
-    armor: { name: '装甲共鳴', levels: ['被ダメージ -30%。帯電装甲が半径130以内の敵を焼く（毎秒、最大HPの80%）', '残りが上限未満なら、被弾無効シールドが6秒ごとに1枚再生（フェイズ・シールド取得数×2、未取得時は1枚）', 'シールド再生の上限を維持したまま、毎秒最大HPの2%を再生'], grant: [] },
+    armor: { name: '装甲共鳴', levels: ['被ダメージ -30%。帯電装甲が半径130以内の敵を焼く（毎秒、最大HPの80%）', 'フェイズ・シールドが1回分回復するまでの時間を12秒から6秒に短縮', '毎秒、最大HPの2%を回復'], grant: [] },
     mobility: { name: '機動共鳴', levels: ['ダッシュ通過ダメージ ×4', 'ダッシュで敵を倒すと待機をリセットし、2秒間 全ダメージ +35%', 'ダッシュ距離 +70、通過ダメージさらに ×2'], grant: [] }
   };
 
@@ -359,8 +359,8 @@
         { label: 'ドローン貫通', value: stats.dronePierce, format: 'integer' },
         { label: '最大HP', value: player.maxHp, format: 'integer' },
         { label: '現在HP', value: Math.ceil(player.hp), format: 'integer' },
-        { label: '被弾無効', value: player.shield, format: 'charges' },
-        { label: '装甲共鳴Lv2時の再生上限', value: Math.max(1, stats.phaseShieldCapacity || 0), format: 'charges' },
+        { label: '現在のシールド残数', value: player.shield, format: 'charges' },
+        { label: 'シールドの回復上限', value: stats.phaseShieldCapacity, format: 'charges' },
         { label: '撃破回復', value: stats.healOnKill, format: 'hp' },
         { label: '吸引範囲', value: stats.pickupRadius, format: 'integer' },
         { label: '撃破エネルギー', value: stats.energyGain, format: 'energy' },
@@ -627,15 +627,13 @@
       const wasOver = this.player.overheated;
       this.player.heat = Math.max(0, this.player.heat - this._stats.coolRate * ((this.sector && this.sector.coolRateMult) || 1) * dt);
       this.player.surge = Math.max(0, (this.player.surge || 0) - dt);
-      // Armor resonance II: replenish one shield every six seconds, up to the
-      // capacity provided by the phase-shield upgrades. The armory route can
-      // temporarily put the current count above this capacity, so it never
-      // removes charges and simply waits until the count falls below the cap.
-      const shieldCapacity = this._shieldCapacity();
-      if (this.resonance.armor >= 2 && this.player.shield < shieldCapacity) {
+      // Armory charges can temporarily exceed the capacity from installed shields.
+      const shieldCapacity = this._stats.phaseShieldCapacity;
+      if (this.player.shield < shieldCapacity) {
+        const interval = this.resonance.armor >= 2 ? 6 : 12;
         this.player.shieldRegen = (this.player.shieldRegen || 0) + dt;
-        if (this.player.shieldRegen + 1e-9 >= 6) {
-          this.player.shieldRegen = Math.max(0, this.player.shieldRegen - 6);
+        if (this.player.shieldRegen + 1e-9 >= interval) {
+          this.player.shieldRegen = Math.max(0, this.player.shieldRegen - interval);
           this.player.shield = Math.min(shieldCapacity, this.player.shield + 1);
           this._stats.shield = this.player.shield;
           if (this.player.shield >= shieldCapacity) this.player.shieldRegen = 0;
@@ -1219,10 +1217,6 @@
       this._syncBuild();
       this._emit('upgrade', { id, x: this.player.x, y: this.player.y, color: def.color, source: source || 'upgrade' });
       return true;
-    }
-
-    _shieldCapacity() {
-      return Math.max(1, this._stats.phaseShieldCapacity || 0);
     }
 
     _openChests(chests) {
